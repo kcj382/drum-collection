@@ -220,7 +220,8 @@
       transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
     }
 
-    .drum-card:hover {
+    .drum-card:hover,
+    .drum-card:focus-visible {
       transform: translateY(-3px);
       border-color: var(--border-gold);
       box-shadow: var(--shadow);
@@ -318,7 +319,16 @@
       text-transform: uppercase;
     }
 
-    .drum-card:hover .card-view { color: var(--gold-light); }
+    .drum-card:hover .card-view,
+    .drum-card:focus-visible .card-view { color: var(--gold-light); }
+
+    /* Visible keyboard focus */
+    .drum-card:focus-visible,
+    .nav-btn:focus-visible,
+    .modal-close:focus-visible {
+      outline: 2px solid var(--gold-light);
+      outline-offset: 2px;
+    }
 
     /* ===== ADD DRUM CARD ===== */
     .add-card {
@@ -568,7 +578,7 @@
         <h2>Ludwig</h2>
         <p>Chicago, Illinois · Est. 1909</p>
       </div>
-      <!-- EDIT: Update count as you add drums -->
+      <!-- Count is filled in automatically from the cards below -->
       <span class="drum-count" id="count-ludwig">2 drums</span>
     </div>
 
@@ -743,7 +753,7 @@
   <div class="modal" id="modal">
     <div class="modal-header">
       <div class="modal-title" id="modal-title">Drum Name</div>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+      <button class="modal-close" onclick="closeModal()" aria-label="Close details">✕</button>
     </div>
     <div class="modal-body">
       <!-- Image side -->
@@ -799,11 +809,11 @@
   // =============================================
   const drums = {
 
-    'ludwig-de-luxe': {
-      title: 'Ludwig De-Luxe Snare Drum',
+    'ludwig-acrolite': {
+      title: 'Ludwig Acrolite Snare Drum',
       tags: [
-        { label: '1920s', gold: true },
-        { label: 'Brass' },
+        { label: '1970s', gold: true },
+        { label: 'Aluminum' },
         { label: '14×5' },
       ],
       specs: [
@@ -911,17 +921,49 @@
       `<tr><td>${label}</td><td>${val}</td></tr>`
     ).join('');
 
-    // Notes
-    document.getElementById('modal-notes').textContent = drum.notes || '';
+    // Notes (placeholder notes starting with "EDIT:" are hidden from visitors)
+    const notesEl = document.getElementById('modal-notes');
+    const notes = (drum.notes || '').trim();
+    const showNotes = notes && !notes.startsWith('EDIT:');
+    notesEl.textContent = showNotes ? notes : '';
+    notesEl.style.display = showNotes ? '' : 'none';
 
+    lastFocused = document.activeElement;
     document.getElementById('modal-overlay').classList.add('open');
     document.body.style.overflow = 'hidden';
+    document.querySelector('.modal-close').focus();
   }
 
+  let lastFocused = null;
+
   function closeModal() {
-    document.getElementById('modal-overlay').classList.remove('open');
+    const overlay = document.getElementById('modal-overlay');
+    if (!overlay.classList.contains('open')) return;
+    overlay.classList.remove('open');
     document.body.style.overflow = '';
+    if (lastFocused) lastFocused.focus();
   }
+
+  // ---- Drum counts: computed from the cards in each brand section ----
+  document.querySelectorAll('.brand-section').forEach(section => {
+    const n = section.querySelectorAll('.drum-card').length;
+    const countEl = section.querySelector('.drum-count');
+    if (countEl) countEl.textContent = n + (n === 1 ? ' drum' : ' drums');
+  });
+
+  // ---- Keyboard access for drum cards (Tab to focus, Enter/Space to open) ----
+  document.querySelectorAll('.drum-card').forEach(card => {
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('role', 'button');
+    const name = card.querySelector('.card-name');
+    if (name) card.setAttribute('aria-label', 'View details: ' + name.textContent.trim());
+    card.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        card.click();
+      }
+    });
+  });
 
   function closeModalOutside(e) {
     if (e.target === document.getElementById('modal-overlay')) closeModal();
